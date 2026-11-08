@@ -13,11 +13,9 @@ Battery, network and volume in one menu bar icon, with a detail page for everyth
 
 <br>
 
+<img src="docs/images/duobar-features.png" alt="DuoBar+ features: the menu bar icon's ring, center and dots, and detail pages for Network, Battery, Bluetooth, System, Disk and AI Usage" width="830">
+
 <img src="docs/images/glyph-states.png" alt="The DuoBar+ menu bar icon in nine states: battery colors, a percentage in the center, charging, AirPods connected and low battery" width="760">
-
-<img src="docs/images/features.gif" alt="Animation of the DuoBar+ icon: what the ring, center and dots show, how it reacts to events, and unfolding on hover" width="800">
-
-<img src="docs/images/demo.gif" alt="Animation of the DuoBar+ popover: the Network, Battery and Bluetooth pages" width="800">
 
 </div>
 
