@@ -12,11 +12,14 @@ enum AppLicense {
     }
 
     /// The same words with the file's hard line breaks removed, so paragraphs
-    /// wrap to the width of the window.
+    /// wrap to the width of the window. Copyright lines stay on their own lines.
     static func reflowed(_ text: String) -> String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: "\n\n")
-            .map { $0.replacingOccurrences(of: "\n", with: " ") }
+            .map { paragraph in
+                let isCopyright = paragraph.split(separator: "\n").allSatisfy { $0.hasPrefix("Copyright") }
+                return isCopyright ? paragraph : paragraph.replacingOccurrences(of: "\n", with: " ")
+            }
             .joined(separator: "\n\n")
     }
 }

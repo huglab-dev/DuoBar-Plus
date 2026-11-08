@@ -8,6 +8,7 @@ final class AboutCreditsTests: XCTestCase {
     func testLicenseShipsInTheAppWithTheRequiredNotices() throws {
         let text = try XCTUnwrap(AppLicense.text())
         XCTAssertTrue(text.contains("Copyright (c) 2026 Mike Li"))
+        XCTAssertTrue(text.contains("Copyright (c) 2026 Hugo Bjurström"))
         XCTAssertTrue(text.contains("Permission is hereby granted, free of charge"))
         XCTAssertTrue(text.contains("shall be included in all"))
         XCTAssertTrue(text.contains("THE SOFTWARE IS PROVIDED \"AS IS\""))
@@ -18,6 +19,7 @@ final class AboutCreditsTests: XCTestCase {
         let reflowed = AppLicense.reflowed(text)
         XCTAssertEqual(reflowed.split(whereSeparator: \.isWhitespace), text.split(whereSeparator: \.isWhitespace))
         XCTAssertEqual(AppLicense.reflowed("a\nb\n\nc\n"), "a b\n\nc")
+        XCTAssertTrue(reflowed.contains("Copyright (c) 2026 Mike Li\nCopyright (c) 2026 Hugo Bjurström"))
     }
 
     func testLogoIsInTheAssetCatalog() {

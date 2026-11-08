@@ -118,6 +118,6 @@ With the popover closed and no CPU, memory, disk or network reading in the icon,
 
 DuoBar+ is developed by Hugo Bjurström at huglab.
 
-It is based on [DuoBar](https://github.com/Mikeli7666/DuoBar), Copyright (c) 2026 Mike Li, and is distributed under the [MIT License](LICENSE). The license text is also included in the app, under Settings → General → Developer.
+It is based on [DuoBar](https://github.com/Mikeli7666/DuoBar), Copyright (c) 2026 Mike Li. DuoBar+ is Copyright (c) 2026 Hugo Bjurström. Both are distributed under the [MIT License](LICENSE). The license text is also included in the app, under Settings → General → Developer.
 
 DuoBar+ is an independent project and is not affiliated with or endorsed by Apple, Anthropic or OpenAI, or by the original DuoBar project.
