@@ -2,7 +2,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/huglab-logo-on-dark.png">
-  <img src="docs/images/huglab-logo-on-light.png" alt="huglab" width="220">
+  <img src="docs/images/huglab-logo-on-light.png" alt="huglab" width="260">
 </picture>
 
 # DuoBar+
