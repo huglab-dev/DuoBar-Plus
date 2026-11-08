@@ -5,10 +5,6 @@
   <img src="docs/images/huglab-logo-on-light.png" alt="huglab" width="220">
 </picture>
 
-<br>
-
-<img src="docs/images/app-icon.png" alt="DuoBar+ app icon" width="128">
-
 # DuoBar+
 
 Battery, network and volume in one menu bar icon, with a detail page for everything behind them.
