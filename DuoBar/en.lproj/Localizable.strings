@@ -386,3 +386,13 @@
 "Developed by Hugo Bjurström" = "Developed by Hugo Bjurström";
 "Based on DuoBar by Mike Li" = "Based on DuoBar by Mike Li";
 "MIT License" = "MIT License";
+"Update available: %@" = "Update available: %@";
+"Skip this version" = "Skip this version";
+"Updates" = "Updates";
+"Version" = "Version";
+"Check for updates automatically" = "Check for updates automatically";
+"Check Now" = "Check Now";
+"Download %@" = "Download %@";
+"Checking…" = "Checking…";
+"DuoBar+ is up to date." = "DuoBar+ is up to date.";
+"Could not check for updates." = "Could not check for updates.";

@@ -134,6 +134,8 @@ struct SettingsView: View {
                 }
             }
 
+            UpdateSettingsSection(checker: UpdateChecker.shared)
+
             // DuoBar+: the credits are in every build; debug tools only with Debug Mode on.
             Section(localized("Developer")) {
                 AboutCreditsView()

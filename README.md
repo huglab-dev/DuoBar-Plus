@@ -9,7 +9,7 @@
 
 Battery, network and volume in one menu bar icon, with a detail page for everything behind them.
 
-macOS 13 or later · Apple Silicon and Intel · Swift, SwiftUI and AppKit · MIT License
+[**Download**](https://github.com/huglab-dev/DuoBar-Plus/releases/latest) · macOS 13 or later · Apple Silicon and Intel · MIT License
 
 <br>
 
@@ -59,9 +59,21 @@ Modules can be reordered and switched off in Settings. A module that is off runs
 
 <sub>Screenshots are rendered with sample data.</sub>
 
+## Install
+
+Download the latest `.dmg` from [Releases](https://github.com/huglab-dev/DuoBar-Plus/releases), open it and drag DuoBar+ to Applications.
+
+DuoBar+ is signed with a self-signed certificate and is not notarized by Apple, so macOS blocks it the first time you open it. To allow it:
+
+1. Try to open DuoBar+ and close the warning.
+2. Open **System Settings → Privacy & Security** and scroll to **Security**.
+3. Choose **Open Anyway** next to DuoBar+ and confirm with your password.
+
+New versions need the same approval. The app shows a card in the popover when a new version is out, with a link to its download page. It does not install anything itself. You can turn the check off in Settings.
+
 ## Build from source
 
-There are no prebuilt downloads yet. Building needs Xcode 26, because the Liquid Glass code uses the macOS 26 SDK. From a clone of this repository:
+Building needs Xcode 26, because the Liquid Glass code uses the macOS 26 SDK. From a clone of this repository:
 
 ```bash
 xcodebuild -project DuoBar.xcodeproj -scheme DuoBar -configuration Release -derivedDataPath build build
@@ -81,7 +93,10 @@ xcodebuild -project DuoBar.xcodeproj -scheme DuoBar -destination 'platform=macOS
 
 ## Privacy
 
-DuoBar+ has no analytics and no account. It makes one kind of network request: if you turn on AI Usage and leave Claude enabled, it fetches your plan limits from Anthropic.
+DuoBar+ has no analytics and no account. It makes two kinds of network request:
+
+- When the popover opens, at most once a day, it asks GitHub for the latest release of DuoBar+. Turn this off under Settings → General → Updates.
+- If you turn on AI Usage and leave Claude enabled, it fetches your plan limits from Anthropic.
 
 | Access | Why |
 |---|---|

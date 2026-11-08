@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct StatusPopoverView: View {
+    @ObservedObject private var updateChecker = UpdateChecker.shared
     @ObservedObject private var statusStore: SystemStatusStore
     @ObservedObject private var router: PopoverRouter
     @ObservedObject private var registry: ModuleRegistry
@@ -90,6 +91,17 @@ struct StatusPopoverView: View {
 
     private var mainContent: some View {
         VStack(spacing: 8) {
+            if let release = updateChecker.offeredRelease {
+                UpdateAvailableCard(
+                    release: release,
+                    onDownload: {
+                        updateChecker.openReleasePage(release)
+                        onClose()
+                    },
+                    onSkip: { updateChecker.skip(release) }
+                )
+            }
+
             ForEach(registry.visibleModules) { id in
                 moduleRow(id)
             }

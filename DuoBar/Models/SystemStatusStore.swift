@@ -31,6 +31,8 @@ final class SystemStatusStore: ObservableObject {
     private let networkService: NetworkService
     private let audioOutputService: AudioOutputService
     private let bluetoothService: BluetoothService
+    /// False in tests, so they never contact GitHub.
+    private let checksForUpdates: Bool
     private let networkSpeedService = NetworkSpeedService()
     private var batteryTimeTimer: Timer?
 
@@ -48,6 +50,7 @@ final class SystemStatusStore: ObservableObject {
         nearbyWiFiProvider: (any NearbyWiFiProviding)? = nil,
         moduleDefaults: UserDefaults = .standard
     ) {
+        checksForUpdates = startServices
         batteryService = BatteryService()
         networkService = NetworkService()
         audioOutputService = AudioOutputService()
@@ -170,6 +173,7 @@ final class SystemStatusStore: ObservableObject {
             networkSpeedService.start()
             startBatteryTimeUpdates()
             moduleRegistry.popoverDidOpen()
+            if checksForUpdates { UpdateChecker.shared.popoverDidOpen() }
         } else {
             networkSpeedService.stop()
             stopBatteryTimeUpdates()
