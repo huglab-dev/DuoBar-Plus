@@ -15,13 +15,15 @@ Battery, network and volume in one menu bar icon, with a detail page for everyth
 
 <img src="docs/images/duobar-features.png" alt="DuoBar+ features: the menu bar icon's ring, center and dots, and detail pages for Network, Battery, Bluetooth, System, Disk and AI Usage" width="830">
 
-<img src="docs/images/glyph-states.png" alt="The DuoBar+ menu bar icon in nine states: battery colors, a percentage in the center, charging, AirPods connected and low battery" width="760">
-
 </div>
 
 DuoBar+ is a fork of [DuoBar](https://github.com/Mikeli7666/DuoBar) by Mike Li. DuoBar puts a battery ring, the network state and four volume dots into a single icon. DuoBar+ keeps that idea, lets you choose what each part of the icon shows, and adds a detail page per module to the popover.
 
 ## The menu bar icon
+
+<p align="center">
+  <img src="docs/images/glyph-states.png" alt="The DuoBar+ menu bar icon in nine states: battery colors, a percentage in the center, charging, AirPods connected and low battery" width="760">
+</p>
 
 Each part of the icon can show something else:
 
@@ -36,6 +38,10 @@ You can also set the ring color (any color you like), the icon size, the ring th
 The icon reacts to events, and each one can be turned off: plugging in, connecting AirPods or headphones, low battery, losing the network, and changing the volume. With **Unfold on Hover**, pointing at the icon opens it into one icon per reading, and clicking one goes straight to its page.
 
 ## The popover
+
+<p align="center">
+  <img src="docs/images/demo.gif" alt="Animation of the DuoBar+ popover: the Network, Battery and Bluetooth pages" width="800">
+</p>
 
 Modules can be reordered and switched off in Settings. A module that is off runs no timers and asks for no permissions.
 
