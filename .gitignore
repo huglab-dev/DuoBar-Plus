@@ -1,0 +1,28 @@
+.DS_Store
+DerivedData/
+build/
+*.xcresult
+*.dSYM
+*.xcuserstate
+xcuserdata/
+
+# Interna planer
+docs/PLAN.md
+docs/IMPLEMENTATION.md
+
+# Byggen och releaser
+*.app
+*.dmg
+*.ipa
+.build/
+.swiftpm/
+
+# Claude Code, lokalt
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Hemligheter och signering
+.env*
+*.p12
+*.cer
+*.mobileprovision
