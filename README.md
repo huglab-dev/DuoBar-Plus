@@ -15,6 +15,8 @@ Battery, network and volume in one menu bar icon, with a detail page for everyth
 
 <img src="docs/images/glyph-states.png" alt="The DuoBar+ menu bar icon in nine states: battery colors, a percentage in the center, charging, AirPods connected and low battery" width="760">
 
+https://github.com/user-attachments/assets/86bf1d80-c1b5-43c8-8d6b-6b22bfff7121
+
 </div>
 
 DuoBar+ is a fork of [DuoBar](https://github.com/Mikeli7666/DuoBar) by Mike Li. DuoBar puts a battery ring, the network state and four volume dots into a single icon. DuoBar+ keeps that idea, lets you choose what each part of the icon shows, and adds a detail page per module to the popover.
@@ -45,19 +47,6 @@ Modules can be reordered and switched off in Settings. A module that is off runs
 | **System** | A live CPU graph with performance and efficiency cores, memory breakdown and pressure, swap, top processes and details about the Mac. |
 | **Disk** | All volumes. Click one to open it in Finder, or unmount external drives from the list. |
 | **AI Usage** | 5-hour and weekly limits for Claude and Codex, with reset times and a warning from 90 %. Off by default. |
-
-<table>
-  <tr>
-    <td><img src="docs/images/system.png" alt="System page with CPU graph and memory" width="260"></td>
-    <td><img src="docs/images/ai-usage.png" alt="AI Usage page with Claude and Codex limits" width="260"></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/bluetooth.png" alt="Bluetooth page with AirPods battery per earbud" width="260"></td>
-    <td><img src="docs/images/disk.png" alt="Disk page with volumes and unmount buttons" width="260"></td>
-  </tr>
-</table>
-
-<sub>Screenshots are rendered with sample data.</sub>
 
 ## Install
 
