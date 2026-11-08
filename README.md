@@ -48,24 +48,6 @@ Modules can be reordered and switched off in Settings. A module that is off runs
 | **Disk** | All volumes. Click one to open it in Finder, or unmount external drives from the list. |
 | **AI Usage** | 5-hour and weekly limits for Claude and Codex, with reset times and a warning from 90 %. Off by default. |
 
-<table>
-  <tr>
-    <td valign="top"><img src="docs/images/popover-overview.png" alt="Main popover with a row per module: Network, Battery, Bluetooth, System, Disk, AI Usage, volume and audio devices" width="260"></td>
-    <td valign="top"><img src="docs/images/popover-network.png" alt="Network page with the current Wi-Fi network, a speed graph, signal, noise, link rate and security" width="260"></td>
-    <td valign="top"><img src="docs/images/popover-system.png" alt="System page with a CPU graph, uptime, memory use and top processes" width="260"></td>
-  </tr>
-  <tr>
-    <td valign="top"><img src="docs/images/popover-battery.png" alt="Battery page with level, status, time left, maximum capacity and cycle count" width="260"></td>
-    <td valign="top"><img src="docs/images/popover-ai-usage.png" alt="AI Usage page with 5-hour and weekly limits for Claude and Codex" width="260"></td>
-    <td valign="top">
-      <img src="docs/images/popover-bluetooth.png" alt="Bluetooth page with AirPods battery per earbud and connect and disconnect buttons" width="260"><br><br>
-      <img src="docs/images/popover-disk.png" alt="Disk page with volumes, free space and an eject button for the external drive" width="260">
-    </td>
-  </tr>
-</table>
-
-<sub>Shown with sample data.</sub>
-
 ## Install
 
 Download the latest `.dmg` from [Releases](https://github.com/huglab-dev/DuoBar-Plus/releases), open it and drag DuoBar+ to Applications.
