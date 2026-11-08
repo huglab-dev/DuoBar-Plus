@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/huglab-readme-on-dark.png">
-  <img src="docs/images/huglab-readme-on-light.png" alt="huglab" width="300">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/huglab-logo-readme-dark.png">
+  <img src="docs/images/huglab-logo-readme-light.png" alt="huglab" width="268">
 </picture>
 
 # DuoBar+
