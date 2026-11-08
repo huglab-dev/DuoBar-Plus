@@ -19,6 +19,7 @@ docs/IMPLEMENTATION.md
 
 # Claude Code, lokalt
 .claude/settings.local.json
+CLAUDE.md
 CLAUDE.local.md
 
 # Hemligheter och signering
