@@ -177,7 +177,7 @@ final class AIUsageTests: XCTestCase {
         )
         expired.popoverDidOpen()
         spin(0.2)
-        XCTAssertEqual(expired.claude, .failed(.signInExpired))
+        XCTAssertEqual(expired.claude, .failed(.signInExpired(Date(timeIntervalSince1970: 1))))
         XCTAssertEqual(expired.codex, .failed(.noSessions))
 
         let denied = AIUsageModule(codexReader: FakeCodexReader(nil), credentialsReader: FakeCredentialsReader(.failure(.denied)), fetcher: FakeFetcher(), defaults: defaults)
@@ -193,7 +193,52 @@ final class AIUsageTests: XCTestCase {
         )
         unauthorized.popoverDidOpen()
         spin(0.2)
-        XCTAssertEqual(unauthorized.claude, .failed(.signInExpired))
+        XCTAssertEqual(unauthorized.claude, .failed(.signInExpired(nil)))
+    }
+
+    func testExpiredSignInMessageNamesTheDate() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        XCTAssertTrue(AIUsageProblem.signInExpired(date).message.contains(AIUsageText.dateTime(date)))
+        XCTAssertTrue(AIUsageProblem.signInExpired(nil).message.contains("claude in Terminal"))
+    }
+
+    func testExpiredSignInRecoversOnTheNextOpen() {
+        let credentials = FakeCredentialsReader(.success(ClaudeCredentials(accessToken: "old", expiresAt: Date(timeIntervalSince1970: 1), subscriptionType: nil)))
+        let fetcher = FakeFetcher()
+        let module = AIUsageModule(codexReader: FakeCodexReader(nil), credentialsReader: credentials, fetcher: fetcher, defaults: defaults)
+        module.popoverDidOpen()
+        spin(0.2)
+        XCTAssertEqual(module.claude.problem?.isSignInExpired, true)
+        XCTAssertTrue(fetcher.tokens.isEmpty, "an expired token is never sent")
+
+        // Claude Code renews its sign-in; the next open picks it up at once.
+        credentials.result = .success(ClaudeCredentials(accessToken: "new", expiresAt: nil, subscriptionType: "max"))
+        module.popoverDidClose()
+        module.popoverDidOpen()
+        spin(0.2)
+        XCTAssertEqual(module.claude.usage?.plan, "max")
+        XCTAssertEqual(fetcher.tokens, ["new"])
+
+        // Once it works, the two-minute limit applies again.
+        module.popoverDidClose()
+        module.popoverDidOpen()
+        spin(0.2)
+        XCTAssertEqual(fetcher.tokens.count, 1)
+        module.popoverDidClose()
+    }
+
+    func testRefusedTokenIsNotSentAgain() {
+        let credentials = FakeCredentialsReader(.success(ClaudeCredentials(accessToken: "t", expiresAt: nil, subscriptionType: nil)))
+        let fetcher = FakeFetcher(status: 401)
+        let module = AIUsageModule(codexReader: FakeCodexReader(nil), credentialsReader: credentials, fetcher: fetcher, defaults: defaults)
+        module.popoverDidOpen()
+        spin(0.2)
+        module.popoverDidClose()
+        module.popoverDidOpen()
+        spin(0.2)
+        XCTAssertEqual(fetcher.tokens, ["t"], "the same refused token is not retried")
+        XCTAssertEqual(module.claude, .failed(.signInExpired(nil)))
+        module.popoverDidClose()
     }
 
     func testOptionsTurnProvidersOff() {

@@ -76,17 +76,28 @@ struct ProviderUsage: Equatable, Sendable {
 
 enum AIUsageProblem: Equatable, Sendable {
     case notSignedIn
-    case signInExpired
+    /// The date the saved sign-in ran out, when known.
+    case signInExpired(Date?)
     case keychainDenied
     case noSessions
     case network(String)
     case server(Int)
     case unreadable
 
+    var isSignInExpired: Bool {
+        if case .signInExpired = self { return true }
+        return false
+    }
+
     var message: String {
         switch self {
         case .notSignedIn: localized("No Claude Code sign-in found. Sign in with Claude Code first.")
-        case .signInExpired: localized("The Claude Code sign-in has expired. Open Claude Code to renew it.")
+        case .signInExpired(let date):
+            if let date {
+                localized("The Claude Code sign-in expired on %@. Open Claude Code, for example by running claude in Terminal, then press Refresh.", AIUsageText.dateTime(date))
+            } else {
+                localized("The Claude Code sign-in has expired. Open Claude Code, for example by running claude in Terminal, then press Refresh.")
+            }
         case .keychainDenied: localized("Keychain access was denied. Allow DuoBar+ to read “Claude Code-credentials”.")
         case .noSessions: localized("No Codex sessions with usage limits on this Mac yet.")
         case .network(let detail): localized("Could not reach Anthropic: %@", detail)
@@ -104,6 +115,11 @@ enum ProviderUsageState: Equatable, Sendable {
 
     var usage: ProviderUsage? {
         if case .ready(let usage) = self { return usage }
+        return nil
+    }
+
+    var problem: AIUsageProblem? {
+        if case .failed(let problem) = self { return problem }
         return nil
     }
 }
@@ -132,6 +148,15 @@ enum AIUsageText {
         let minutes = max(Int((seconds / 60).rounded(.up)), 0)
         if minutes < 60 { return localized("%d min", minutes) }
         return localized("%d h %d min", minutes / 60, minutes % 60)
+    }
+
+    /// "9 Nov 2026 at 03:14" in the user's format.
+    static func dateTime(_ date: Date, locale: Locale = .current) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 
     /// "Updated 3 min ago" for data read from logs.

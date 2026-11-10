@@ -25,6 +25,8 @@ final class AIUsageModule: ObservableObject, StatusModule {
     /// (and again after the sign-in expires).
     private var credentials: ClaudeCredentials?
     private var lastClaudeAttempt: Date?
+    /// The token that last ran out or was refused, so it is not sent again.
+    private var rejectedToken: String?
     private var generation = 0
     private(set) var claudeFetchCount = 0
 
@@ -94,11 +96,14 @@ final class AIUsageModule: ObservableObject, StatusModule {
     private func refreshClaude(force: Bool) {
         guard showsClaude else { claude = .off; return }
         let date = now()
-        if !force, let lastClaudeAttempt, date.timeIntervalSince(lastClaudeAttempt) < claudeMinimumInterval, claude != .loading {
+        // An expired sign-in is read again on every open, so the card recovers
+        // as soon as Claude Code has renewed it. Reading the Keychain is local;
+        // Anthropic is still asked at most every `claudeMinimumInterval`.
+        let isRecovering = claude.problem?.isSignInExpired == true
+        if !force, !isRecovering, let lastClaudeAttempt, date.timeIntervalSince(lastClaudeAttempt) < claudeMinimumInterval, claude != .loading {
             return
         }
-        lastClaudeAttempt = date
-        if claude.usage == nil { claude = .loading }
+        if claude.usage == nil, !isRecovering { claude = .loading }
         let generation = generation
 
         if let credentials, !credentials.isExpired(at: date) {
@@ -114,7 +119,11 @@ final class AIUsageModule: ObservableObject, StatusModule {
                 switch result {
                 case .success(let credentials):
                     if credentials.isExpired(at: self.now()) {
-                        self.finishClaude(.failed(.signInExpired), generation: generation)
+                        self.rejectedToken = credentials.accessToken
+                        self.finishClaude(.failed(.signInExpired(credentials.expiresAt)), generation: generation)
+                    } else if credentials.accessToken == self.rejectedToken {
+                        // Anthropic refused this token before; wait for a new one.
+                        self.finishClaude(.failed(.signInExpired(nil)), generation: generation)
                     } else {
                         self.credentials = credentials
                         self.fetchClaude(with: credentials, generation: generation)
@@ -128,6 +137,7 @@ final class AIUsageModule: ObservableObject, StatusModule {
 
     private func fetchClaude(with credentials: ClaudeCredentials, generation: Int) {
         claudeFetchCount += 1
+        lastClaudeAttempt = now()
         let fetcher = fetcher
         let measuredAt = now()
         Task { [weak self] in
@@ -140,7 +150,8 @@ final class AIUsageModule: ObservableObject, StatusModule {
                         .map(ProviderUsageState.ready) ?? .failed(.unreadable)
                 case 401, 403:
                     self?.credentials = nil
-                    state = .failed(.signInExpired)
+                    self?.rejectedToken = credentials.accessToken
+                    state = .failed(.signInExpired(nil))
                 default:
                     state = .failed(.server(status))
                 }
@@ -157,7 +168,7 @@ final class AIUsageModule: ObservableObject, StatusModule {
         guard generation == self.generation || claude == .loading else { return }
         guard showsClaude else { return }
         // Keep the last numbers on a temporary failure, such as rate limiting.
-        if case .failed(let problem) = state, claude.usage != nil, problem != .signInExpired, problem != .keychainDenied {
+        if case .failed(let problem) = state, claude.usage != nil, !problem.isSignInExpired, problem != .keychainDenied {
             return
         }
         claude = state
