@@ -11,6 +11,7 @@ enum SystemSettingsOpener {
         case storage
         case privacy
         case bluetoothPrivacy
+        case accessibilityPrivacy
     }
 
     static func pane(for network: NetworkStatus) -> Pane {
@@ -46,6 +47,11 @@ enum SystemSettingsOpener {
             [
                 "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Bluetooth",
                 "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth",
+            ]
+        case .accessibilityPrivacy:
+            [
+                "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility",
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
             ]
         case .bluetooth:
             [

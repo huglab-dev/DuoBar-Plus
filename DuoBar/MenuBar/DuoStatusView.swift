@@ -20,6 +20,9 @@ struct DuoStatusView: View {
     @AppStorage(PreferenceKeys.adaptiveRingColorCoding) private var adaptiveRingColorCoding = false
     @AppStorage(PreferenceKeys.showBatteryPercentageInMenuBar) private var showBatteryPercentageInMenuBar = false
     @AppStorage(BatteryPercentagePlacement.key) private var batteryPercentagePlacementRaw = BatteryPercentagePlacement.inside.rawValue
+    // DuoBar+: the hidden menu bar items button.
+    @AppStorage(PreferenceKeys.moduleEnabled(.menuBar)) private var menuBarModuleEnabled = ModuleID.menuBar.isEnabledByDefault
+    @AppStorage(ModuleOption.menuBarButton.key) private var menuBarButtonEnabled = ModuleOption.menuBarButton.defaultValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var batteryRingColorMode: BatteryRingColorMode {
@@ -101,6 +104,11 @@ struct DuoStatusView: View {
             return unfoldedWidth + 4
         }
         return metrics.statusItemWidth + MenuBarBatteryPercentage.extraWidth(for: besidePercentage)
+            + MenuBarButton.extraWidth(isShown: showsMenuBarButton)
+    }
+
+    private var showsMenuBarButton: Bool {
+        MenuBarButton.isShown(moduleEnabled: menuBarModuleEnabled, optionEnabled: menuBarButtonEnabled)
     }
 
     /// DuoBar+: one reading per slot for the unfolded mark.
@@ -156,6 +164,10 @@ struct DuoStatusView: View {
             } else {
             HStack(spacing: MenuBarBatteryPercentage.spacing) {
                 let composition = glyphComposition
+                if showsMenuBarButton {
+                    MenuBarButtonGlyph()
+                }
+
                 DuoGlyphView(
                     status: statusStore.status,
                     presentation: priorityController.presentation,

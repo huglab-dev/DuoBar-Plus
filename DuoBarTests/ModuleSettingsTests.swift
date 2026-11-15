@@ -24,10 +24,11 @@ final class ModuleSettingsTests: XCTestCase {
         ModuleDefaults.register(in: defaults)
         let model = ModuleSettingsModel(defaults: defaults, hasInternalBattery: true)
 
-        for id in ModuleID.allCases where id != .aiUsage {
+        for id in ModuleID.allCases where id != .aiUsage && id != .menuBar {
             XCTAssertTrue(model.isEnabled(id), "\(id) should default to on")
         }
         XCTAssertFalse(model.isEnabled(.aiUsage), "AI Usage is opt-in")
+        XCTAssertFalse(model.isEnabled(.menuBar), "Menu Bar Items is opt-in")
         XCTAssertFalse(model.isEnabled(.roamingLog))
         XCTAssertTrue(model.isEnabled(.nearbyNetworks))
     }
@@ -37,6 +38,16 @@ final class ModuleSettingsTests: XCTestCase {
 
         XCTAssertEqual(model.modules, ModuleID.allCases.filter(\.isImplemented))
         XCTAssertTrue(model.options.allSatisfy { $0.isImplemented && $0.module.isImplemented })
+    }
+
+    func testOptionsAreGroupedUnderTheirModuleInModuleOrder() {
+        let model = ModuleSettingsModel(defaults: defaults, hasInternalBattery: true)
+        let groups = model.optionGroups
+        XCTAssertEqual(groups.flatMap(\.options).count, model.options.count)
+        XCTAssertTrue(groups.allSatisfy { group in group.options.allSatisfy { $0.module == group.module } })
+        XCTAssertEqual(groups.map(\.module), model.modules.filter { id in groups.contains { $0.module == id } })
+        XCTAssertEqual(groups.first { $0.module == .menuBar }?.options, [.menuBarButton, .menuBarRow])
+        XCTAssertNotNil(ModuleID.menuBar.settingsNote)
     }
 
     func testStoreRegistersExactlyTheImplementedModules() {
@@ -52,14 +63,14 @@ final class ModuleSettingsTests: XCTestCase {
 
     func testMoveKeepsUnimplementedModulesAtTheEnd() {
         let model = ModuleSettingsModel(defaults: defaults, hasInternalBattery: true)
-        XCTAssertEqual(model.modules, [.network, .battery, .bluetooth, .system, .disk, .aiUsage])
+        XCTAssertEqual(model.modules, [.network, .battery, .bluetooth, .system, .disk, .aiUsage, .menuBar])
 
         model.move(fromOffsets: IndexSet(integer: 4), toOffset: 0)
 
-        XCTAssertEqual(model.modules, [.disk, .network, .battery, .bluetooth, .system, .aiUsage])
+        XCTAssertEqual(model.modules, [.disk, .network, .battery, .bluetooth, .system, .aiUsage, .menuBar])
         XCTAssertEqual(
             defaults.stringArray(forKey: PreferenceKeys.moduleOrder),
-            ["disk", "network", "battery", "bluetooth", "system", "aiUsage"]
+            ["disk", "network", "battery", "bluetooth", "system", "aiUsage", "menuBar"]
         )
     }
 

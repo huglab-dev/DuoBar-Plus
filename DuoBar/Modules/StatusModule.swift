@@ -9,6 +9,7 @@ enum ModuleID: String, CaseIterable, Identifiable, Sendable {
     case system
     case disk
     case aiUsage
+    case menuBar
 
     var id: String { rawValue }
 
@@ -20,6 +21,7 @@ enum ModuleID: String, CaseIterable, Identifiable, Sendable {
         case .system: localized("System")
         case .disk: localized("Disk")
         case .aiUsage: localized("AI Usage")
+        case .menuBar: localized("Menu Bar Items")
         }
     }
 
@@ -31,12 +33,14 @@ enum ModuleID: String, CaseIterable, Identifiable, Sendable {
         case .system: "gearshape"
         case .disk: "internaldrive"
         case .aiUsage: "sparkles"
+        case .menuBar: "menubar.rectangle"
         }
     }
 
     /// Whether the module is on before the user has changed anything.
-    /// AI Usage reads a sign-in and contacts Anthropic, so it is opt-in.
-    var isEnabledByDefault: Bool { self != .aiUsage }
+    /// AI Usage reads a sign-in and contacts Anthropic, and Menu Bar Items
+    /// needs Accessibility access, so both are opt-in.
+    var isEnabledByDefault: Bool { self != .aiUsage && self != .menuBar }
 }
 
 /// One independently switchable section of the popover.

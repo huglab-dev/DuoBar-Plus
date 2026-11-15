@@ -10,6 +10,7 @@ struct StatusPopoverView: View {
     @AppStorage(PreferenceKeys.showBatteryPercentage) private var showBatteryPercentage = true
     @AppStorage(PreferenceKeys.batteryColorCoding) private var batteryColorCoding = false
     @AppStorage(ModuleOption.nearbyNetworks.key) private var showsNearbyNetworks = ModuleOption.nearbyNetworks.defaultValue
+    @AppStorage(ModuleOption.menuBarRow.key) private var showsMenuBarRow = ModuleOption.menuBarRow.defaultValue
     @AppStorage(DebugMode.key) private var debugMode = false
     @AppStorage(PopoverMotion.enabledKey) private var popoverAnimation = true
     private let onClose: () -> Void
@@ -212,6 +213,10 @@ struct StatusPopoverView: View {
             if let aiUsageModule = statusStore.aiUsageModule {
                 AIUsageStatusRow(module: aiUsageModule) { router.open(.aiUsage) }
             }
+        case .menuBar:
+            if showsMenuBarRow, let menuBarModule = statusStore.menuBarModule {
+                MenuBarStatusRow(module: menuBarModule) { router.open(.menuBar) }
+            }
         case .system:
             if let systemModule = statusStore.systemModule {
                 SystemStatusRow(module: systemModule) { router.open(.system) }
@@ -244,6 +249,17 @@ struct StatusPopoverView: View {
         case .aiUsage:
             if let aiUsageModule = statusStore.aiUsageModule {
                 AIUsageDetailView(module: aiUsageModule)
+            }
+        case .menuBar:
+            if let menuBarModule = statusStore.menuBarModule {
+                MenuBarDetailView(
+                    module: menuBarModule,
+                    onOpenAccessibilitySettings: {
+                        SystemSettingsOpener.open(.accessibilityPrivacy)
+                        onClose()
+                    },
+                    onWillOpenItem: onClose
+                )
             }
         case .system:
             if let systemModule = statusStore.systemModule {

@@ -24,10 +24,19 @@ struct ModuleSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if !model.options.isEmpty {
-                Section(localized("Options")) {
-                    ForEach(model.options) { option in
+            // One section per module, so each option is shown with its module.
+            ForEach(model.optionGroups, id: \.module) { group in
+                Section {
+                    ForEach(group.options) { option in
                         optionRow(option)
+                    }
+                } header: {
+                    Label(group.module.title, systemImage: group.module.symbol)
+                } footer: {
+                    if let note = group.module.settingsNote {
+                        Text(note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

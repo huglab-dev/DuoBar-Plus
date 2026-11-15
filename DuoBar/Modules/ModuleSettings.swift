@@ -6,7 +6,15 @@ extension ModuleID {
     /// `SystemStatusStore` registers exactly these.
     var isImplemented: Bool {
         switch self {
-        case .network, .battery, .bluetooth, .system, .disk, .aiUsage: true
+        case .network, .battery, .bluetooth, .system, .disk, .aiUsage, .menuBar: true
+        }
+    }
+
+    /// A short note under the module's options in Settings.
+    var settingsNote: String? {
+        switch self {
+        case .menuBar: localized("Requires Accessibility access. Works only on a display with a notch.")
+        default: nil
         }
     }
 }
@@ -21,6 +29,8 @@ enum ModuleOption: String, CaseIterable, Identifiable, Sendable {
     case externalVolumes
     case claudeUsage
     case codexUsage
+    case menuBarButton
+    case menuBarRow
 
     var id: String { rawValue }
 
@@ -32,20 +42,21 @@ enum ModuleOption: String, CaseIterable, Identifiable, Sendable {
         case .topProcesses, .memoryPressureWarning: .system
         case .externalVolumes: .disk
         case .claudeUsage, .codexUsage: .aiUsage
+        case .menuBarButton, .menuBarRow: .menuBar
         }
     }
 
     var defaultValue: Bool {
         switch self {
-        case .roamingLog: false
-        case .nearbyNetworks, .topProcesses, .memoryPressureWarning, .externalVolumes, .claudeUsage, .codexUsage: true
+        case .roamingLog, .menuBarButton: false
+        case .nearbyNetworks, .topProcesses, .memoryPressureWarning, .externalVolumes, .claudeUsage, .codexUsage, .menuBarRow: true
         }
     }
 
     /// Options appear in Settings once the feature behind them exists.
     var isImplemented: Bool {
         switch self {
-        case .nearbyNetworks, .externalVolumes, .topProcesses, .memoryPressureWarning, .roamingLog, .claudeUsage, .codexUsage: true
+        case .nearbyNetworks, .externalVolumes, .topProcesses, .memoryPressureWarning, .roamingLog, .claudeUsage, .codexUsage, .menuBarButton, .menuBarRow: true
         }
     }
 
@@ -58,6 +69,8 @@ enum ModuleOption: String, CaseIterable, Identifiable, Sendable {
         case .externalVolumes: localized("External volumes")
         case .claudeUsage: localized("Claude")
         case .codexUsage: localized("Codex")
+        case .menuBarButton: localized("Arrow in the menu bar")
+        case .menuBarRow: localized("Card in the popover")
         }
     }
 
@@ -70,6 +83,8 @@ enum ModuleOption: String, CaseIterable, Identifiable, Sendable {
         case .externalVolumes: localized("Lists external and network volumes in the Disk details.")
         case .claudeUsage: localized("Reads Claude Code's sign-in (macOS asks for Keychain access) and fetches your plan limits from Anthropic while the popover is open.")
         case .codexUsage: localized("Reads the limits Codex saves in its session logs on this Mac. Nothing is sent anywhere.")
+        case .menuBarButton: localized("Click the arrow to the left of the DuoBar+ icon to list the icons hidden behind the notch and open their menus. Makes the DuoBar+ icon a little wider.")
+        case .menuBarRow: localized("Lists the hidden icons on a card in the popover. Turn it off if you only use the arrow.")
         }
     }
 
@@ -113,6 +128,15 @@ final class ModuleSettingsModel: ObservableObject {
 
     var options: [ModuleOption] {
         ModuleOption.allCases.filter { $0.isImplemented && $0.module.isImplemented }
+    }
+
+    /// Options grouped by module, in the modules' order.
+    var optionGroups: [(module: ModuleID, options: [ModuleOption])] {
+        let options = self.options
+        return modules.compactMap { id in
+            let own = options.filter { $0.module == id }
+            return own.isEmpty ? nil : (id, own)
+        }
     }
 
     func isSupported(_ id: ModuleID) -> Bool {

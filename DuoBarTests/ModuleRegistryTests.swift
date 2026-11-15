@@ -20,7 +20,7 @@ final class ModuleRegistryTests: XCTestCase {
 
     func testResolveOrderKeepsStoredOrderDropsUnknownAndAppendsMissing() {
         let order = ModuleRegistry.resolveOrder(stored: ["disk", "bogus", "network", "disk"])
-        XCTAssertEqual(order, [.disk, .network, .battery, .bluetooth, .system, .aiUsage])
+        XCTAssertEqual(order, [.disk, .network, .battery, .bluetooth, .system, .aiUsage, .menuBar])
         XCTAssertEqual(ModuleRegistry.resolveOrder(stored: nil), ModuleID.allCases)
     }
 
@@ -132,7 +132,7 @@ final class ModuleRegistryTests: XCTestCase {
 
         registry.setOrder([.battery])
 
-        XCTAssertEqual(defaults.stringArray(forKey: PreferenceKeys.moduleOrder), ["battery", "network", "bluetooth", "system", "disk", "aiUsage"])
+        XCTAssertEqual(defaults.stringArray(forKey: PreferenceKeys.moduleOrder), ["battery", "network", "bluetooth", "system", "disk", "aiUsage", "menuBar"])
         XCTAssertEqual(registry.visibleModules, [.battery, .network])
     }
 }

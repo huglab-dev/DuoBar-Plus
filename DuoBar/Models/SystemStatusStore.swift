@@ -22,6 +22,7 @@ final class SystemStatusStore: ObservableObject {
     /// Typed access for the popover views.
     var diskModule: DiskModule? { moduleRegistry.module(.disk) as? DiskModule }
     var aiUsageModule: AIUsageModule? { moduleRegistry.module(.aiUsage) as? AIUsageModule }
+    var menuBarModule: MenuBarModule? { moduleRegistry.module(.menuBar) as? MenuBarModule }
     var systemModule: SystemModule? { moduleRegistry.module(.system) as? SystemModule }
     var batteryModule: BatteryModule? { moduleRegistry.module(.battery) as? BatteryModule }
     var networkModule: NetworkModule? { moduleRegistry.module(.network) as? NetworkModule }
@@ -153,7 +154,9 @@ final class SystemStatusStore: ObservableObject {
                 codexReader: InertAIUsageSources(),
                 credentialsReader: InertAIUsageSources(),
                 fetcher: InertAIUsageSources()
-            )
+            ),
+            // Without `live` it never asks other apps over Accessibility.
+            live ? MenuBarModule() : MenuBarModule(reader: InertMenuBarItemsReader()),
         ]
     }
 

@@ -398,3 +398,28 @@
 "Could not check for updates." = "Could not check for updates.";
 "The Claude Code sign-in expired on %@. Open Claude Code, for example by running claude in Terminal, then press Refresh." = "The Claude Code sign-in expired on %@. Open Claude Code, for example by running claude in Terminal, then press Refresh.";
 "The Claude Code sign-in has expired. Open Claude Code, for example by running claude in Terminal, then press Refresh." = "The Claude Code sign-in has expired. Open Claude Code, for example by running claude in Terminal, then press Refresh.";
+
+/* DuoBar+: Menu Bar Items */
+"Arrow in the menu bar" = "Arrow in the menu bar";
+"Card in the popover" = "Card in the popover";
+"Click the arrow to the left of the DuoBar+ icon to list the icons hidden behind the notch and open their menus. Makes the DuoBar+ icon a little wider." = "Click the arrow to the left of the DuoBar+ icon to list the icons hidden behind the notch and open their menus. Makes the DuoBar+ icon a little wider.";
+"Lists the hidden icons on a card in the popover. Turn it off if you only use the arrow." = "Lists the hidden icons on a card in the popover. Turn it off if you only use the arrow.";
+"Requires Accessibility access. Works only on a display with a notch." = "Requires Accessibility access. Works only on a display with a notch.";
+"Menu Bar Items" = "Menu Bar Items";
+"Needs Accessibility access" = "Needs Accessibility access";
+"No notch on this display" = "No notch on this display";
+"All items are visible" = "All items are visible";
+"1 item hidden by the notch" = "1 item hidden by the notch";
+"%d items hidden by the notch" = "%d items hidden by the notch";
+"DuoBar+ needs Accessibility access to find menu bar items hidden by the notch. Allow it, then open the popover again." = "DuoBar+ needs Accessibility access to find menu bar items hidden by the notch. Allow it, then open the popover again.";
+"Allow Access…" = "Allow Access…";
+"Open Accessibility Settings" = "Open Accessibility Settings";
+"None of the connected displays has a camera notch, so every menu bar item has room." = "None of the connected displays has a camera notch, so every menu bar item has room.";
+"Hidden by the Notch" = "Hidden by the Notch";
+"Click an item to open its menu." = "Click an item to open its menu.";
+"Open menu" = "Open menu";
+"Unknown App" = "Unknown App";
+"Hidden menu bar items" = "Hidden menu bar items";
+"Allow Accessibility Access…" = "Allow Accessibility Access…";
+"No hidden menu bar items" = "No hidden menu bar items";
+"Menu Bar Items Settings…" = "Menu Bar Items Settings…";

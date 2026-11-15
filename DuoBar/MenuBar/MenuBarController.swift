@@ -128,6 +128,13 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func togglePopover() {
+        // DuoBar+: a click on the hidden items button lists them.
+        if let button = statusItem.button, let event = NSApp.currentEvent, !hoverState.isUnfolded,
+           MenuBarButton.isShown(),
+           button.convert(event.locationInWindow, from: nil).x < MenuBarButton.hitWidth {
+            showHiddenItemsMenu(below: button)
+            return
+        }
         // DuoBar+: a click on an unfolded reading opens its page.
         if let button = statusItem.button, let event = NSApp.currentEvent,
            let hit = hoverState.segment(atX: button.convert(event.locationInWindow, from: nil).x) {
@@ -149,6 +156,32 @@ final class MenuBarController: NSObject {
     }
 
     private var pendingHoverOpen: DispatchWorkItem?
+
+    /// DuoBar+: scans when clicked, then shows the hidden items under the button.
+    private func showHiddenItemsMenu(below button: NSStatusBarButton) {
+        guard let module = statusStore.menuBarModule else { return }
+        cancelHoverOpen()
+        closePopover()
+        module.loadOverview { [weak self, weak button] overview in
+            guard let self, let button, button.window != nil else { return }
+            let menu = MenuBarOverviewMenu.make(overview, actions: .init(
+                pick: { module.pick($0, path: $1) },
+                press: { module.press($0) },
+                allowAccess: {
+                    module.requestAccess()
+                    SystemSettingsOpener.open(.accessibilityPrivacy)
+                },
+                openSettings: { [weak self] in
+                    guard let self else { return }
+                    self.showPopover()
+                    self.statusStore.popoverRouter.open(.menuBar)
+                }
+            ))
+            let x: CGFloat = 0
+            let y = button.isFlipped ? button.bounds.maxY + 4 : button.bounds.minY - 4
+            menu.popUp(positioning: nil, at: NSPoint(x: x, y: y), in: button)
+        }
+    }
 
     private func scheduleHoverOpen() {
         cancelHoverOpen()
