@@ -192,6 +192,9 @@ struct StatusPopoverView: View {
                     trailing: wifiPowerToggle,
                     onActivate: { router.open(.network) }
                 )
+                .rightClickMenu {
+                    NetworkContextMenu.make(tools: networkModule.tools, network: statusStore.status.network, onClose: onClose)
+                }
             }
         case .battery:
             Button { router.open(.battery) } label: {
@@ -220,6 +223,12 @@ struct StatusPopoverView: View {
         case .system:
             if let systemModule = statusStore.systemModule {
                 SystemStatusRow(module: systemModule) { router.open(.system) }
+                    .rightClickMenu {
+                        SimpleContextMenu.make([.init(title: localized("Open Activity Monitor")) {
+                            onClose()
+                            SystemDetailView.openActivityMonitor()
+                        }])
+                    }
             }
         case .bluetooth:
             if let bluetoothModule = statusStore.bluetoothModule {
@@ -238,6 +247,14 @@ struct StatusPopoverView: View {
                 nearbyNetworks: showsNearbyNetworks
                     ? AnyView(NearbyWiFiButton(statusStore: statusStore, onOpenSettings: openWiFiSettings))
                     : nil,
+                onEditHostsFile: {
+                    onClose()
+                    statusStore.networkModule?.tools.editHostsFile()
+                },
+                onConfigureIP: { interfaceName in
+                    onClose()
+                    statusStore.networkModule?.tools.configureIP(bsdName: interfaceName)
+                },
                 onOpenSettings: openNetworkSettings
             )
         case .battery:
@@ -258,7 +275,10 @@ struct StatusPopoverView: View {
                         SystemSettingsOpener.open(.accessibilityPrivacy)
                         onClose()
                     },
-                    onWillOpenItem: onClose
+                    onToggleNotch: {
+                        onClose()
+                        NotchDisplayMode().toggle()
+                    }
                 )
             }
         case .system:

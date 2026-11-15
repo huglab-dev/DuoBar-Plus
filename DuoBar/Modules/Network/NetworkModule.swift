@@ -14,6 +14,10 @@ final class NetworkModule: ObservableObject, StatusModule {
     @Published private(set) var hasLoadedWiFi = false
     /// IP, router, DNS and VPN; read only while the detail view is open.
     @Published private(set) var addresses: NetworkAddresses?
+    /// Adapter names by BSD name, read while the popover is open.
+    @Published private(set) var adapterNames: [String: String] = [:]
+    /// Flush DNS and the hosts file. Runs only when the user asks.
+    let tools = NetworkTools()
     /// One-second speed readings for the graph, cleared when the popover closes.
     let speedHistory = SpeedHistory()
     /// Access point changes; listens in the background only while the
@@ -24,6 +28,7 @@ final class NetworkModule: ObservableObject, StatusModule {
 
     private let reader: any WiFiDetailsReading
     private let addressReader: any NetworkAddressReading
+    private let adapterNameReader: any NetworkAdapterNameReading
     private let interval: TimeInterval
     private var isDetailOpen = false
     private let queue = DispatchQueue(label: "DuoBarPlus.NetworkModule", qos: .userInitiated)
@@ -33,12 +38,14 @@ final class NetworkModule: ObservableObject, StatusModule {
     init(
         reader: any WiFiDetailsReading = WiFiDetailsReader(),
         addressReader: any NetworkAddressReading = NetworkAddressReader(),
+        adapterNameReader: any NetworkAdapterNameReading = SCNetworkAdapterNameReader(),
         defaults: UserDefaults = .standard,
         interval: TimeInterval = 2
     ) {
         self.defaults = defaults
         self.reader = reader
         self.addressReader = addressReader
+        self.adapterNameReader = adapterNameReader
         self.interval = interval
     }
 
@@ -101,6 +108,11 @@ final class NetworkModule: ObservableObject, StatusModule {
         roamingLog.clear()
     }
 
+    /// The adapter's display name, for wired and other non-Wi-Fi connections.
+    func adapterName(for interfaceName: String?) -> String? {
+        interfaceName.flatMap { adapterNames[$0] }
+    }
+
     var logsRoaming: Bool { ModuleOption.roamingLog.isEnabled(in: defaults) }
 
     private func syncRoamingLog() {
@@ -116,9 +128,11 @@ final class NetworkModule: ObservableObject, StatusModule {
         let generation = generation
         let reader = reader
         let addressReader = isDetailOpen ? addressReader : nil
+        let adapterNameReader = adapterNameReader
         queue.async { [weak self] in
             let details = reader.details()
             let addresses = addressReader?.addresses()
+            let adapterNames = adapterNameReader.names()
             DispatchQueue.main.async {
                 guard let self, self.generation == generation, self.timer != nil else { return }
                 self.wifi = details
@@ -127,6 +141,7 @@ final class NetworkModule: ObservableObject, StatusModule {
                     self.roamingLog.observe(details.map(AccessPointSnapshot.init(details:)))
                 }
                 if let addresses, addresses != self.addresses { self.addresses = addresses }
+                if adapterNames != self.adapterNames { self.adapterNames = adapterNames }
             }
         }
     }
@@ -159,7 +174,9 @@ enum NetworkStatusText {
         }
     }
 
-    static func detail(for network: NetworkStatus, hasPowerControlError: Bool) -> String {
+    /// `adapterName` replaces the BSD name for wired and other connections,
+    /// which the detail view shows on its own Interface row.
+    static func detail(for network: NetworkStatus, hasPowerControlError: Bool, adapterName: String? = nil) -> String {
         if hasPowerControlError {
             return localized("Unable to change Wi-Fi power")
         }
@@ -169,8 +186,8 @@ enum NetworkStatusText {
         }
         switch network.transport {
         case .wifi: return network.ssid ?? localized("Network name unavailable")
-        case .ethernet: return network.interfaceName ?? localized("Wired connection")
-        case .other: return network.interfaceName ?? localized("Active connection")
+        case .ethernet: return adapterName ?? network.interfaceName ?? localized("Wired connection")
+        case .other: return adapterName ?? network.interfaceName ?? localized("Active connection")
         case .none: return localized("Not connected")
         }
     }

@@ -13,7 +13,11 @@ struct NetworkStatusRow: View {
         StatusRow(
             symbol: NetworkStatusText.symbol(for: network),
             title: localized("Network"),
-            detail: NetworkStatusText.detail(for: network, hasPowerControlError: statusStore.wifiPowerControlError != nil),
+            detail: NetworkStatusText.detail(
+                for: network,
+                hasPowerControlError: statusStore.wifiPowerControlError != nil,
+                adapterName: module.adapterName(for: network.interfaceName)
+            ),
             speedText: rssi.map(WiFiText.dBm) ?? NetworkStatusText.speed(for: network, speed: statusStore.networkSpeed),
             speedTint: rssi.map { NetworkStatusText.SignalQuality(rssi: $0).color },
             stateText: NetworkStatusText.state(for: network),

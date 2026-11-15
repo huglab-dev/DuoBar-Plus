@@ -95,16 +95,19 @@ final class MenuBarModuleTests: XCTestCase {
         XCTAssertTrue(module.hiddenItems.isEmpty)
     }
 
-    func testOpenPressesTheItem() {
+    func testItemWithoutMenuOpensTheApp() {
         let reader = FakeMenuBarItemsReader(trusted: true, items: [])
-        let module = MenuBarModule(reader: reader, geometry: { Self.geometry }, candidates: { [] }, pressDelay: 0)
-        let item = Self.item("A", x: 100)
+        var opened: [MenuBarItemSnapshot] = []
+        let module = MenuBarModule(reader: reader, geometry: { Self.geometry }, candidates: { [] }, pressDelay: 0,
+                                   openApplication: { opened.append($0) })
+        let item = Self.item("A", x: -3621)
         module.open(item)
-        module.open(item, click: .secondary)
-        // No menu exposed (an Electron app, say), so the item itself is pressed.
-        waitUntil { reader.pressed.count == 2 }
-        XCTAssertEqual(reader.pressed.map(\.0), [item, item])
-        XCTAssertEqual(reader.pressed.map(\.1), [.primary, .secondary])
+        module.open(item)
+        // No menu exposed (BetterDisplay or an Electron app), so the app opens.
+        waitUntil { opened.count == 2 }
+        XCTAssertEqual(opened, [item, item])
+        module.openApp(item)
+        XCTAssertEqual(opened.count, 3)
     }
 
     func testExposedMenuIsShownAndThePickIsForwarded() {
@@ -122,14 +125,14 @@ final class MenuBarModuleTests: XCTestCase {
                 shown = menu
                 onPick([2])
             },
-            pressDelay: 0
+            pressDelay: 0,
+            openApplication: { _ in XCTFail("an app with a menu shows the menu, not the app") }
         )
         let item = Self.item("A", x: -3900)
         module.open(item)
         waitUntil { !reader.picked.isEmpty }
         XCTAssertEqual(shown, entries)
         XCTAssertEqual(reader.picked.map(\.1), [[2]])
-        XCTAssertTrue(reader.pressed.isEmpty, "the real menu would open off screen")
     }
 
     func testProxyMenuMirrorsEntriesAndPaths() throws {
@@ -212,7 +215,7 @@ final class MenuBarModuleTests: XCTestCase {
         var openedSettings = false
         let menu = MenuBarOverviewMenu.make(overview, actions: .init(
             pick: { picked.append(($0, $1)) },
-            press: { pressed.append($0) },
+            openApp: { pressed.append($0) },
             allowAccess: {},
             openSettings: { openedSettings = true }
         ))
@@ -228,13 +231,86 @@ final class MenuBarModuleTests: XCTestCase {
         XCTAssertTrue(openedSettings)
     }
 
+    func testOverviewMenuNotchToggle() {
+        var toggled = 0
+        var actions = MenuBarOverviewMenu.Actions(pick: { _, _ in }, openApp: { _ in }, allowAccess: {}, openSettings: {})
+        let plain = MenuBarOverviewMenu.make(MenuBarOverview(state: .ready, entries: []), actions: actions)
+        XCTAssertFalse(plain.items.map(\.title).contains(localized("Menu Bar Below Notch")))
+
+        actions.notch = .init(isBelowNotch: true, toggle: { toggled += 1 })
+        let below = MenuBarOverviewMenu.make(MenuBarOverview(state: .noNotch, entries: []), actions: actions)
+        XCTAssertEqual(below.items.first?.title, localized("Menu bar is below the notch"))
+        let index = try! XCTUnwrap(below.items.firstIndex { $0.title == localized("Menu Bar Below Notch") })
+        XCTAssertEqual(below.items[index].state, .on)
+        below.performActionForItem(at: index)
+        XCTAssertEqual(toggled, 1)
+    }
+
+    func testGlyphMenuRows() {
+        XCTAssertEqual(GlyphMenu.rows(moduleEnabled: true, notchAvailable: true, belowNotch: false),
+                       [.showHiddenItems, .belowNotch(isChecked: false)])
+        XCTAssertEqual(GlyphMenu.rows(moduleEnabled: false, notchAvailable: true, belowNotch: true), [.belowNotch(isChecked: true)])
+        XCTAssertEqual(GlyphMenu.rows(moduleEnabled: true, notchAvailable: false, belowNotch: false), [.showHiddenItems])
+        XCTAssertEqual(GlyphMenu.rows(moduleEnabled: false, notchAvailable: false, belowNotch: false), [], "the popover opens as before")
+    }
+
     func testOverviewMenuEmptyAndNeedsAccess() {
-        let actions = MenuBarOverviewMenu.Actions(pick: { _, _ in }, press: { _ in }, allowAccess: {}, openSettings: {})
+        let actions = MenuBarOverviewMenu.Actions(pick: { _, _ in }, openApp: { _ in }, allowAccess: {}, openSettings: {})
         let empty = MenuBarOverviewMenu.make(MenuBarOverview(state: .ready, entries: []), actions: actions)
         XCTAssertEqual(empty.items.first?.title, localized("No hidden menu bar items"))
         XCTAssertEqual(empty.items.first?.isEnabled, false)
         let locked = MenuBarOverviewMenu.make(MenuBarOverview(state: .needsAccess, entries: []), actions: actions)
         XCTAssertEqual(locked.items.first?.title, localized("Allow Accessibility Access…"))
+    }
+
+    func testBackgroundOnlyAppsAreSkipped() {
+        XCTAssertFalse(MenuBarModule.mayOwnMenuBarItems(.prohibited))
+        XCTAssertTrue(MenuBarModule.mayOwnMenuBarItems(.accessory))
+        XCTAssertTrue(MenuBarModule.mayOwnMenuBarItems(.regular))
+    }
+
+    func testFreshPrefetchIsUsedOnce() {
+        let reader = FakeMenuBarItemsReader(trusted: true, items: [Self.item("Hidden", x: 993)])
+        let module = MenuBarModule(reader: reader, geometry: { Self.geometry }, candidates: { [] })
+        module.prefetchOverview()
+        waitUntil { module.state == .ready }
+        XCTAssertEqual(reader.scanCount, 1)
+
+        var overview: MenuBarOverview?
+        module.loadOverview { overview = $0 }
+        XCTAssertEqual(overview?.entries.map(\.item.appName), ["Hidden"], "the prefetch answers the click at once")
+        XCTAssertEqual(reader.scanCount, 1)
+
+        overview = nil
+        module.loadOverview { overview = $0 }
+        waitUntil { overview != nil }
+        XCTAssertEqual(reader.scanCount, 2, "a used prefetch is not reused")
+    }
+
+    func testStalePrefetchScansAgain() {
+        let reader = FakeMenuBarItemsReader(trusted: true, items: [])
+        var clock = Date(timeIntervalSince1970: 0)
+        let module = MenuBarModule(reader: reader, geometry: { Self.geometry }, candidates: { [] }, now: { clock })
+        module.prefetchOverview()
+        waitUntil { module.state == .ready }
+        clock += 10
+        var overview: MenuBarOverview?
+        module.loadOverview { overview = $0 }
+        waitUntil { overview != nil }
+        XCTAssertEqual(reader.scanCount, 2)
+    }
+
+    func testClickDuringPrefetchWaitsForIt() {
+        let reader = FakeMenuBarItemsReader(trusted: true, items: [Self.item("Hidden", x: 993)])
+        reader.delay = 0.2
+        let module = MenuBarModule(reader: reader, geometry: { Self.geometry }, candidates: { [] })
+        module.prefetchOverview()
+        module.prefetchOverview()
+        var overview: MenuBarOverview?
+        module.loadOverview { overview = $0 }
+        waitUntil { overview != nil }
+        XCTAssertEqual(reader.scanCount, 1)
+        XCTAssertEqual(overview?.entries.count, 1)
     }
 
     func testRunningAppsExcludeDuoBarItself() {
@@ -303,23 +379,25 @@ final class MenuBarModuleTests: XCTestCase {
 
 final class FakeMenuBarItemsReader: MenuBarItemsReading, @unchecked Sendable {
     let trusted: Bool
-    let items: [MenuBarItemSnapshot]
+    private var _items: [MenuBarItemSnapshot]
+    var items: [MenuBarItemSnapshot] {
+        get { lock.withLock { _items } }
+        set { lock.withLock { _items = newValue } }
+    }
     var delay: TimeInterval = 0
     private let lock = NSLock()
     private var _scanCount = 0
     private var _accessRequests = 0
-    private var _pressed: [(MenuBarItemSnapshot, MenuBarItemClick)] = []
     private var _picked: [(MenuBarItemSnapshot, [Int])] = []
     var menu: [MenuBarMenuEntry]?
 
     init(trusted: Bool, items: [MenuBarItemSnapshot]) {
         self.trusted = trusted
-        self.items = items
+        self._items = items
     }
 
     var scanCount: Int { lock.withLock { _scanCount } }
     var accessRequests: Int { lock.withLock { _accessRequests } }
-    var pressed: [(MenuBarItemSnapshot, MenuBarItemClick)] { lock.withLock { _pressed } }
     var picked: [(MenuBarItemSnapshot, [Int])] { lock.withLock { _picked } }
 
     func menu(of item: MenuBarItemSnapshot) -> [MenuBarMenuEntry]? { menu }
@@ -335,11 +413,7 @@ final class FakeMenuBarItemsReader: MenuBarItemsReading, @unchecked Sendable {
     func items(of apps: [MenuBarAppCandidate]) -> [MenuBarItemSnapshot] {
         lock.withLock { _scanCount += 1 }
         if delay > 0 { Thread.sleep(forTimeInterval: delay) }
-        return items
-    }
-
-    func press(_ item: MenuBarItemSnapshot, click: MenuBarItemClick) -> Bool {
-        lock.withLock { _pressed.append((item, click)) }
-        return true
+        return lock.withLock { _items }
     }
 }
+

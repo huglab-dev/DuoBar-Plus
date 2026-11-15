@@ -78,6 +78,16 @@ enum WiFiText {
     }
 
     /// "Wi-Fi 6E (802.11ax)". 6 GHz turns Wi-Fi 6 into 6E.
+    /// "−44 dBm · Wi-Fi 6", shown on the folded Wi-Fi Details header.
+    static func collapsedSummary(_ wifi: WiFiDetails?) -> String? {
+        guard let wifi, wifi.isAssociated else { return nil }
+        var parts = [dBm(wifi.rssi)]
+        if let phy = phyMode(wifi.phyModeRaw, band: wifi.band) {
+            parts.append(phy.components(separatedBy: " (").first ?? phy)
+        }
+        return parts.joined(separator: " · ")
+    }
+
     static func phyMode(_ raw: Int, band: WiFiBand?) -> String? {
         switch raw {
         case 1: "802.11a"

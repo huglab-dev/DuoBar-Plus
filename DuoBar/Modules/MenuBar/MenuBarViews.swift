@@ -43,15 +43,34 @@ struct MenuBarDetailView: View {
     let onOpenAccessibilitySettings: () -> Void
     /// Called before an item's menu opens, so the popover can close.
     var onWillOpenItem: () -> Void = {}
+    /// Switches the built-in display in or out of the below-notch mode.
+    var onToggleNotch: (() -> Void)?
+    var notchMode = NotchDisplayMode()
 
     var body: some View {
+        content
+        if let onToggleNotch, notchMode.isAvailable {
+            DetailActionRow(
+                title: notchMode.isBelowNotch ? localized("Restore Full Height") : localized("Move Menu Bar Below Notch"),
+                symbol: "rectangle.topthird.inset.filled",
+                action: onToggleNotch
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch module.state {
         case .needsAccess:
             DetailMessageCard(text: localized("DuoBar+ needs Accessibility access to find menu bar items hidden by the notch. Allow it, then open the popover again."))
             DetailActionRow(title: localized("Allow Access…"), symbol: "lock.open", action: module.requestAccess)
             DetailActionRow(title: localized("Open Accessibility Settings"), action: onOpenAccessibilitySettings)
         case .noNotch:
-            DetailMessageCard(text: localized("None of the connected displays has a camera notch, so every menu bar item has room."))
+            if notchMode.isBelowNotch {
+                DetailMessageCard(text: localized("The menu bar is below the notch, so every menu bar item has room."))
+            } else {
+                DetailMessageCard(text: localized("None of the connected displays has a camera notch, so every menu bar item has room."))
+            }
         case .checking:
             DetailValueRow(label: localized("Status"), value: localized("Checking…"))
         case .ready:
@@ -64,10 +83,10 @@ struct MenuBarDetailView: View {
                     // the left-click action often just opens the app.
                     MenuBarItemTile(item: item) {
                         onWillOpenItem()
-                        module.open(item, click: .secondary)
+                        module.open(item)
                     }
                 }
-                Text(localized("Click an item to open its menu."))
+                Text(localized("Click an item to open its menu, or the app when it has no menu."))
                     .font(.system(size: 9.5))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

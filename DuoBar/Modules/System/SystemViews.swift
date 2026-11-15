@@ -252,6 +252,38 @@ struct DetailSectionHeader: View {
     }
 }
 
+/// A section header that folds its section. Shows `summary` while folded.
+struct CollapsibleSectionHeader: View {
+    let title: String
+    @Binding var isExpanded: Bool
+    var summary: String?
+
+    var body: some View {
+        Button { isExpanded.toggle() } label: {
+            HStack(spacing: 6) {
+                Text(title.uppercased())
+                    .font(.system(size: 9.5, weight: .semibold))
+                Spacer(minLength: 8)
+                if !isExpanded, let summary {
+                    Text(summary)
+                        .font(.system(size: 9.5, weight: .medium))
+                        .lineLimit(1)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .bold))
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 14)
+            .padding(.top, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityValue(isExpanded ? localized("Expanded") : localized("Collapsed"))
+    }
+}
+
 /// Title, value, a usage bar and an optional caption on one tile.
 struct MeterTile: View {
     let title: String

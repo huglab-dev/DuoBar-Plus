@@ -82,6 +82,22 @@ final class MenuBarController: NSObject {
             hostingView.bottomAnchor.constraint(equalTo: button.bottomAnchor)
         ])
         self.hostingView = hostingView
+
+        // DuoBar+: start the hidden items scan when the pointer reaches the
+        // arrow, so a click shows the list sooner. Only scans, opens nothing.
+        let prefetchView = ArrowPrefetchView()
+        prefetchView.onEnter = { [weak self] in
+            guard let self, MenuBarButton.isShown(), !self.hoverState.isUnfolded else { return }
+            self.statusStore.menuBarModule?.prefetchOverview()
+        }
+        prefetchView.translatesAutoresizingMaskIntoConstraints = false
+        button.addSubview(prefetchView)
+        NSLayoutConstraint.activate([
+            prefetchView.leadingAnchor.constraint(equalTo: button.leadingAnchor),
+            prefetchView.widthAnchor.constraint(equalToConstant: MenuBarButton.hitWidth),
+            prefetchView.topAnchor.constraint(equalTo: button.topAnchor),
+            prefetchView.bottomAnchor.constraint(equalTo: button.bottomAnchor)
+        ])
     }
 
     private func configurePopover() {
@@ -128,6 +144,13 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func togglePopover() {
+        // DuoBar+: a right-click (or ⌃-click) on the glyph shows its menu.
+        if let button = statusItem.button, let event = NSApp.currentEvent, !hoverState.isUnfolded,
+           event.type == .rightMouseUp || event.modifierFlags.contains(.control),
+           button.convert(event.locationInWindow, from: nil).x >= (MenuBarButton.isShown() ? MenuBarButton.hitWidth : 0),
+           showGlyphMenu(below: button) {
+            return
+        }
         // DuoBar+: a click on the hidden items button lists them.
         if let button = statusItem.button, let event = NSApp.currentEvent, !hoverState.isUnfolded,
            MenuBarButton.isShown(),
@@ -157,6 +180,37 @@ final class MenuBarController: NSObject {
 
     private var pendingHoverOpen: DispatchWorkItem?
 
+    /// DuoBar+: the glyph's right-click menu. Returns false when it has no
+    /// rows, so the click opens the popover instead.
+    private func showGlyphMenu(below button: NSStatusBarButton) -> Bool {
+        let notchMode = NotchDisplayMode()
+        let rows = GlyphMenu.rows(
+            moduleEnabled: GlyphMenu.isMenuBarModuleEnabled() && statusStore.menuBarModule != nil,
+            notchAvailable: notchMode.isAvailable,
+            belowNotch: notchMode.isBelowNotch
+        )
+        guard !rows.isEmpty else { return false }
+        cancelHoverOpen()
+        closePopover()
+        let menu = SimpleContextMenu.make(rows.map { row in
+            switch row {
+            case .showHiddenItems:
+                return .init(title: localized("Show Hidden Menu Bar Items")) { [weak self, weak button] in
+                    // After this menu has closed.
+                    DispatchQueue.main.async {
+                        guard let self, let button else { return }
+                        self.showHiddenItemsMenu(below: button)
+                    }
+                }
+            case .belowNotch(let isChecked):
+                return .init(title: localized("Menu Bar Below Notch"), isChecked: isChecked) { notchMode.toggle() }
+            }
+        })
+        let y = button.isFlipped ? button.bounds.maxY + 4 : button.bounds.minY - 4
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: y), in: button)
+        return true
+    }
+
     /// DuoBar+: scans when clicked, then shows the hidden items under the button.
     private func showHiddenItemsMenu(below button: NSStatusBarButton) {
         guard let module = statusStore.menuBarModule else { return }
@@ -164,9 +218,10 @@ final class MenuBarController: NSObject {
         closePopover()
         module.loadOverview { [weak self, weak button] overview in
             guard let self, let button, button.window != nil else { return }
+            let notchMode = NotchDisplayMode()
             let menu = MenuBarOverviewMenu.make(overview, actions: .init(
                 pick: { module.pick($0, path: $1) },
-                press: { module.press($0) },
+                openApp: { module.openApp($0) },
                 allowAccess: {
                     module.requestAccess()
                     SystemSettingsOpener.open(.accessibilityPrivacy)
@@ -175,7 +230,10 @@ final class MenuBarController: NSObject {
                     guard let self else { return }
                     self.showPopover()
                     self.statusStore.popoverRouter.open(.menuBar)
-                }
+                },
+                notch: notchMode.isAvailable
+                    ? .init(isBelowNotch: notchMode.isBelowNotch, toggle: { notchMode.toggle() })
+                    : nil
             ))
             let x: CGFloat = 0
             let y = button.isFlipped ? button.bounds.maxY + 4 : button.bounds.minY - 4
@@ -548,6 +606,29 @@ extension MenuBarController {
                   !self.popoverHasAttachedWindows else { return }
             self.handleOutsideClick()
         }
+    }
+}
+
+/// DuoBar+: reports the pointer entering the hidden items arrow and lets
+/// clicks through.
+private final class ArrowPrefetchView: NSView {
+    var onEnter: (() -> Void)?
+    private var trackingArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        onEnter?()
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
     }
 }
 

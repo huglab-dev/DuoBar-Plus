@@ -25,6 +25,14 @@ final class WiFiDetailsTests: XCTestCase {
         XCTAssertNil(WiFiText.rate(0))
     }
 
+    func testCollapsedSummary() {
+        XCTAssertEqual(WiFiText.collapsedSummary(Self.sample), "\(WiFiText.dBm(-58)) · Wi-Fi 6")
+        var oldPHY = Self.sample
+        oldPHY.phyModeRaw = 0
+        XCTAssertEqual(WiFiText.collapsedSummary(oldPHY), WiFiText.dBm(-58))
+        XCTAssertNil(WiFiText.collapsedSummary(nil))
+    }
+
     func testPrivateAddressDetection() {
         XCTAssertEqual(Self.sample.privateAddress, "02:00:00:00:00:02")
         var same = Self.sample

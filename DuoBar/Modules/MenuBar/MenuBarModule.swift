@@ -39,23 +39,37 @@ final class MenuBarModule: ObservableObject, StatusModule {
     private let candidates: @MainActor () -> [MenuBarAppCandidate]
     private let presentMenu: @MainActor ([MenuBarMenuEntry], @escaping ([Int]) -> Void) -> Void
     private let queue = DispatchQueue(label: "DuoBarPlus.MenuBarModule", qos: .userInitiated)
-    /// Delay before pressing an item, so the popover is gone when its menu opens.
+    /// Delay before reading an item's menu, so a closing popover is gone first.
     private let pressDelay: TimeInterval
+    private let openApplication: @MainActor (MenuBarItemSnapshot) -> Void
     /// Bumped whenever scans should be discarded, for example after closing.
     private var generation = 0
+    /// The menu bar button's scan: a prefetched result, and clicks waiting
+    /// for a scan in progress.
+    private var cachedOverview: (overview: MenuBarOverview, date: Date)?
+    private var overviewWaiters: [@MainActor (MenuBarOverview) -> Void] = []
+    private var isScanningOverview = false
+    private let overviewMaxAge: TimeInterval
+    private let now: () -> Date
 
     init(
         reader: any MenuBarItemsReading = AXMenuBarItemsReader(),
         geometry: @escaping @MainActor () -> NotchGeometry? = { NotchGeometry.current() },
         candidates: @escaping @MainActor () -> [MenuBarAppCandidate] = MenuBarModule.runningApps,
         presentMenu: @escaping @MainActor ([MenuBarMenuEntry], @escaping ([Int]) -> Void) -> Void = MenuBarProxyMenu.present,
-        pressDelay: TimeInterval = 0.15
+        pressDelay: TimeInterval = 0.15,
+        openApplication: @escaping @MainActor (MenuBarItemSnapshot) -> Void = MenuBarModule.reopenApplication,
+        overviewMaxAge: TimeInterval = 3,
+        now: @escaping () -> Date = Date.init
     ) {
+        self.overviewMaxAge = overviewMaxAge
+        self.now = now
         self.presentMenu = presentMenu
         self.reader = reader
         self.geometry = geometry
         self.candidates = candidates
         self.pressDelay = pressDelay
+        self.openApplication = openApplication
     }
 
     func popoverDidOpen() {
@@ -72,6 +86,7 @@ final class MenuBarModule: ObservableObject, StatusModule {
 
     func deactivate() {
         generation += 1
+        cachedOverview = nil
         hiddenItems = []
         state = .checking
     }
@@ -81,10 +96,9 @@ final class MenuBarModule: ObservableObject, StatusModule {
         reader.requestAccess()
     }
 
-    /// Shows the item's menu at the pointer when the app exposes it. Otherwise
-    /// presses the item (its menu then opens where the item is), and brings
-    /// the app forward when even that fails.
-    func open(_ item: MenuBarItemSnapshot, click: MenuBarItemClick = .primary) {
+    /// Shows the item's menu at the pointer when the app exposes it.
+    /// Otherwise opens the app.
+    func open(_ item: MenuBarItemSnapshot) {
         let reader = reader
         queue.asyncAfter(deadline: .now() + pressDelay) { [weak self] in
             if let entries = reader.menu(of: item) {
@@ -96,18 +110,18 @@ final class MenuBarModule: ObservableObject, StatusModule {
                 }
                 return
             }
-            guard !reader.press(item, click: click) else { return }
+            // No readable menu: its own menu would open where the item is,
+            // often off screen, so the app is opened instead.
             DispatchQueue.main.async {
-                NSRunningApplication(processIdentifier: item.pid)?.activate()
+                self?.openApplication(item)
             }
         }
     }
 
-    /// Scans now and reads each hidden item's menu, for the menu bar button.
-    /// Runs only when the user clicks that button.
+    /// Scans and reads each hidden item's menu, for the menu bar button.
+    /// Uses a prefetch from the last few seconds, or waits for one in progress.
     func loadOverview(completion: @escaping @MainActor (MenuBarOverview) -> Void) {
-        generation += 1
-        guard let geometry = geometry() else {
+        guard geometry() != nil else {
             state = .noNotch
             completion(MenuBarOverview(state: .noNotch, entries: []))
             return
@@ -117,10 +131,35 @@ final class MenuBarModule: ObservableObject, StatusModule {
             completion(MenuBarOverview(state: .needsAccess, entries: []))
             return
         }
-        let generation = generation
+        // A prefetch from moments ago is used once; the next click scans again.
+        if let cached = cachedOverview, now().timeIntervalSince(cached.date) <= overviewMaxAge {
+            cachedOverview = nil
+            completion(cached.overview)
+            return
+        }
+        cachedOverview = nil
+        overviewWaiters.append(completion)
+        startOverviewScan()
+    }
+
+    /// Starts the button's scan early, when the pointer reaches the button,
+    /// so a click shortly after shows the list at once. Not a timer: it runs
+    /// only on that pointer event.
+    func prefetchOverview() {
+        guard geometry() != nil, reader.isTrusted() else { return }
+        if let cached = cachedOverview, now().timeIntervalSince(cached.date) <= overviewMaxAge { return }
+        startOverviewScan()
+    }
+
+    private func startOverviewScan() {
+        guard !isScanningOverview, let geometry = geometry() else { return }
+        isScanningOverview = true
         let reader = reader
         let apps = candidates()
         queue.async { [weak self] in
+            #if DEBUG
+            let started = Date()
+            #endif
             let hidden = geometry.hiddenItems(reader.items(of: apps))
             var menus = [[MenuBarMenuEntry]?](repeating: nil, count: hidden.count)
             let lock = NSLock()
@@ -128,15 +167,25 @@ final class MenuBarModule: ObservableObject, StatusModule {
                 let menu = reader.menu(of: hidden[index])
                 lock.withLock { menus[index] = menu }
             }
+            #if DEBUG
+            NSLog("[DuoBar+ MenuBar] scan apps=%d hidden=%d took %.0f ms", apps.count, hidden.count, Date().timeIntervalSince(started) * 1000)
+            #endif
             let overview = MenuBarOverview(
                 state: .ready,
                 entries: zip(hidden, menus).map { MenuBarOverview.Entry(item: $0, menu: $1) }
             )
             DispatchQueue.main.async {
-                guard let self, self.generation == generation else { return }
+                guard let self else { return }
+                self.isScanningOverview = false
                 self.hiddenItems = hidden
                 self.state = .ready
-                completion(overview)
+                let waiters = self.overviewWaiters
+                self.overviewWaiters = []
+                if waiters.isEmpty {
+                    self.cachedOverview = (overview, self.now())
+                } else {
+                    waiters.forEach { $0(overview) }
+                }
             }
         }
     }
@@ -147,14 +196,26 @@ final class MenuBarModule: ObservableObject, StatusModule {
         queue.async { _ = reader.pick(item, path: path) }
     }
 
-    /// Presses the item itself, for apps whose menu cannot be read.
-    func press(_ item: MenuBarItemSnapshot) {
-        let reader = reader
-        queue.async {
-            guard !reader.press(item, click: .secondary) else { return }
-            DispatchQueue.main.async {
-                NSRunningApplication(processIdentifier: item.pid)?.activate()
-            }
+    /// Opens the app, for items whose menu cannot be read.
+    func openApp(_ item: MenuBarItemSnapshot) {
+        openApplication(item)
+    }
+
+    /// Opens the app as a click in the Dock or Finder would. For a running
+    /// app that sends "reopen", which shows its main or settings window.
+    static func reopenApplication(_ item: MenuBarItemSnapshot) {
+        let running = NSRunningApplication(processIdentifier: item.pid)
+        let url = running?.bundleURL
+            ?? item.bundleIdentifier.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+        guard let url else {
+            running?.activate()
+            return
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, error in
+            guard error != nil else { return }
+            DispatchQueue.main.async { running?.activate() }
         }
     }
 
@@ -183,11 +244,17 @@ final class MenuBarModule: ObservableObject, StatusModule {
         }
     }
 
+    /// Background-only processes cannot show menu bar items, and many of them
+    /// never answer Accessibility, which slows the scan down.
+    nonisolated static func mayOwnMenuBarItems(_ policy: NSApplication.ActivationPolicy) -> Bool {
+        policy != .prohibited
+    }
+
     /// Running apps that may own menu bar items, without DuoBar+ itself.
     static func runningApps() -> [MenuBarAppCandidate] {
         let ownPID = ProcessInfo.processInfo.processIdentifier
         return NSWorkspace.shared.runningApplications
-            .filter { $0.processIdentifier != ownPID }
+            .filter { $0.processIdentifier != ownPID && mayOwnMenuBarItems($0.activationPolicy) }
             .map {
                 MenuBarAppCandidate(
                     pid: $0.processIdentifier,

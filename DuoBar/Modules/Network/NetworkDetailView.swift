@@ -5,6 +5,8 @@ struct NetworkDetailView: View {
     let module: NetworkModule?
     /// The Nearby Networks entry, shown right under the connected network.
     var nearbyNetworks: AnyView?
+    var onEditHostsFile: (() -> Void)?
+    var onConfigureIP: ((String) -> Void)?
     let onOpenSettings: () -> Void
 
     var body: some View {
@@ -28,7 +30,8 @@ struct NetworkDetailView: View {
                 label: localized("Connection"),
                 value: NetworkStatusText.detail(
                     for: network,
-                    hasPowerControlError: statusStore.wifiPowerControlError != nil
+                    hasPowerControlError: statusStore.wifiPowerControlError != nil,
+                    adapterName: module?.adapterName(for: network.interfaceName)
                 )
             )
             // Without a Wi-Fi connection the list is still useful for joining one.
@@ -53,6 +56,12 @@ struct NetworkDetailView: View {
             AddressRows(module: module)
         }
 
+        if let onConfigureIP, let interfaceName = network.interfaceName, network.isConnected {
+            DetailActionRow(title: localized("Configure IP…"), symbol: "slider.horizontal.3") {
+                onConfigureIP(interfaceName)
+            }
+        }
+
         if network.transport == .wifi, network.isConnected {
             if let module {
                 WiFiDetailRows(module: module, ssidAuthorization: statusStore.wifiSSIDAuthorization)
@@ -65,6 +74,9 @@ struct NetworkDetailView: View {
             RoamingLogSection(log: module.roamingLog)
         }
 
+        if let onEditHostsFile {
+            DetailActionRow(title: localized("Edit Hosts File…"), symbol: "square.and.pencil", action: onEditHostsFile)
+        }
         DetailActionRow(title: settingsTitle, action: onOpenSettings)
     }
 
@@ -151,11 +163,18 @@ private struct AddressRows: View {
 private struct WiFiDetailRows: View {
     @ObservedObject var module: NetworkModule
     let ssidAuthorization: SSIDAuthorizationState
+    @AppStorage(PreferenceKeys.wifiDetailsExpanded) private var isExpanded = true
 
     var body: some View {
-        DetailSectionHeader(title: localized("Wi-Fi Details"))
+        CollapsibleSectionHeader(
+            title: localized("Wi-Fi Details"),
+            isExpanded: $isExpanded,
+            summary: WiFiText.collapsedSummary(module.wifi)
+        )
 
-        if let wifi = module.wifi, wifi.isAssociated {
+        if !isExpanded {
+            EmptyView()
+        } else if let wifi = module.wifi, wifi.isAssociated {
             DetailValueRow(
                 label: localized("Signal"),
                 value: WiFiText.dBm(wifi.rssi),

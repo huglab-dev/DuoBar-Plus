@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !isRunningTests else { return }
+        installURLHandler()
         guard menuBarController == nil else { return }
 
         let instanceLock = ApplicationInstanceLock()
@@ -86,6 +87,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let target: NSApplication.ActivationPolicy = wantsDock ? .regular : .accessory
         guard NSApp.activationPolicy() != target else { return }
         NSApp.setActivationPolicy(target)
+    }
+
+    /// DuoBar+: `duobarplus://toggle-notch`, `notch-on` and `notch-off`, for
+    /// Raycast and other launchers (see scripts/raycast). The SwiftUI app
+    /// lifecycle does not pass URLs to `application(_:open:)` without a
+    /// window scene and installs its own handler during launch, so the URL
+    /// Apple Event is taken over once launching has finished.
+    private func installURLHandler() {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+    }
+
+    @objc private func handleURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
+        guard let text = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+              let url = URL(string: text),
+              let command = DuoBarURLCommand(url: url)
+        else { return }
+        let succeeded: Bool
+        if case .ipProfile(let name) = command {
+            guard let store = statusStore, let tools = store.networkModule?.tools else { return }
+            tools.applyProfile(named: name, primaryBSDName: store.status.network.interfaceName)
+            succeeded = true
+        } else {
+            succeeded = command.runNotch()
+        }
+        #if DEBUG
+        NSLog("[DuoBar+ Notch] %@ succeeded=%d", text, succeeded)
+        #endif
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

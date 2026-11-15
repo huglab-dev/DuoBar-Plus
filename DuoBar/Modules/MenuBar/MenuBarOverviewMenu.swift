@@ -1,18 +1,26 @@
 import AppKit
 
 /// The menu under the menu bar button: one row per hidden item. A row whose
-/// app exposes its menu opens it as a submenu; other rows press the item.
+/// app exposes its menu opens it as a submenu; other rows open the app.
 @MainActor
 final class MenuBarOverviewMenu: NSObject {
     struct Actions {
         var pick: (MenuBarItemSnapshot, [Int]) -> Void
-        var press: (MenuBarItemSnapshot) -> Void
+        /// Opens the app, for items whose menu cannot be read.
+        var openApp: (MenuBarItemSnapshot) -> Void
         var allowAccess: () -> Void
         var openSettings: () -> Void
+        /// The below-notch switch, when the built-in display supports it.
+        var notch: NotchToggle?
+    }
+
+    struct NotchToggle {
+        var isBelowNotch: Bool
+        var toggle: () -> Void
     }
 
     private let actions: Actions
-    private var pressTargets: [ObjectIdentifier: MenuBarItemSnapshot] = [:]
+    private var appTargets: [ObjectIdentifier: MenuBarItemSnapshot] = [:]
 
     private init(actions: Actions) {
         self.actions = actions
@@ -28,7 +36,10 @@ final class MenuBarOverviewMenu: NSObject {
         case .needsAccess:
             menu.addItem(owner.actionItem(localized("Allow Accessibility Access…"), #selector(allowAccess)))
         case .noNotch:
-            menu.addItem(disabledItem(localized("No notch on this display")))
+            let text = actions.notch?.isBelowNotch == true
+                ? localized("Menu bar is below the notch")
+                : localized("No notch on this display")
+            menu.addItem(disabledItem(text))
         case .checking, .ready:
             if overview.entries.isEmpty {
                 menu.addItem(disabledItem(localized("No hidden menu bar items")))
@@ -39,6 +50,11 @@ final class MenuBarOverviewMenu: NSObject {
         }
 
         menu.addItem(.separator())
+        if let notch = actions.notch {
+            let item = owner.actionItem(localized("Menu Bar Below Notch"), #selector(toggleNotch))
+            item.state = notch.isBelowNotch ? .on : .off
+            menu.addItem(item)
+        }
         menu.addItem(owner.actionItem(localized("Menu Bar Items Settings…"), #selector(openSettings)))
         return menu
     }
@@ -55,8 +71,8 @@ final class MenuBarOverviewMenu: NSObject {
             }
         } else {
             row.target = self
-            row.action = #selector(press(_:))
-            pressTargets[ObjectIdentifier(row)] = item
+            row.action = #selector(openApp(_:))
+            appTargets[ObjectIdentifier(row)] = item
         }
         return row
     }
@@ -79,16 +95,21 @@ final class MenuBarOverviewMenu: NSObject {
         return icon
     }
 
-    @objc private func press(_ sender: NSMenuItem) {
-        guard let item = pressTargets[ObjectIdentifier(sender)] else { return }
-        actions.press(item)
+    @objc private func openApp(_ sender: NSMenuItem) {
+        guard let item = appTargets[ObjectIdentifier(sender)] else { return }
+        actions.openApp(item)
     }
 
     @objc private func allowAccess() {
         actions.allowAccess()
     }
 
+    @objc private func toggleNotch() {
+        actions.notch?.toggle()
+    }
+
     @objc private func openSettings() {
         actions.openSettings()
     }
 }
+

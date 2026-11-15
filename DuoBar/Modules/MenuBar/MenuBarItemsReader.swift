@@ -18,12 +18,6 @@ struct MenuBarItemSnapshot: Equatable, Identifiable, Sendable {
     var id: String { "\(pid)-\(index)" }
 }
 
-/// How an item is opened: as with a left click or with a right click.
-enum MenuBarItemClick: Equatable, Sendable {
-    case primary
-    case secondary
-}
-
 /// One row of another app's menu, read through Accessibility.
 struct MenuBarMenuEntry: Equatable, Sendable {
     /// Position among the menu's Accessibility children, used to press it later.
@@ -49,9 +43,6 @@ protocol MenuBarItemsReading: Sendable {
     /// Shows the system prompt that leads to Accessibility settings.
     func requestAccess()
     func items(of apps: [MenuBarAppCandidate]) -> [MenuBarItemSnapshot]
-    /// Opens the item's menu, or its right-click menu for `.secondary`.
-    /// Blocks while the app responds, so call it off the main thread.
-    func press(_ item: MenuBarItemSnapshot, click: MenuBarItemClick) -> Bool
     /// The item's menu, when the app exposes it without opening it.
     func menu(of item: MenuBarItemSnapshot) -> [MenuBarMenuEntry]?
     /// Chooses the entry at `path` in the item's menu.
@@ -85,16 +76,6 @@ struct AXMenuBarItemsReader: MenuBarItemsReading {
             lock.unlock()
         }
         return results.flatMap { $0 }
-    }
-
-    /// `AXPress` is the left click and `AXShowMenu` the right click. Each
-    /// falls back to the other, so an item with one menu opens either way.
-    func press(_ item: MenuBarItemSnapshot, click: MenuBarItemClick) -> Bool {
-        guard let element = Self.element(for: item) else { return false }
-        let actions = click == .primary
-            ? [kAXPressAction, kAXShowMenuAction]
-            : [kAXShowMenuAction, kAXPressAction]
-        return actions.contains { AXUIElementPerformAction(element, $0 as CFString) == .success }
     }
 
     /// Apps built on `NSMenu` expose the whole menu without opening it.
@@ -225,7 +206,6 @@ struct InertMenuBarItemsReader: MenuBarItemsReading {
     func isTrusted() -> Bool { false }
     func requestAccess() {}
     func items(of apps: [MenuBarAppCandidate]) -> [MenuBarItemSnapshot] { [] }
-    func press(_ item: MenuBarItemSnapshot, click: MenuBarItemClick) -> Bool { false }
     func menu(of item: MenuBarItemSnapshot) -> [MenuBarMenuEntry]? { nil }
     func pick(_ item: MenuBarItemSnapshot, path: [Int]) -> Bool { false }
 }
