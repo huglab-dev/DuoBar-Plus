@@ -47,12 +47,37 @@ Modules can be reordered and switched off in Settings. A module that is off runs
 
 | Module | What it shows |
 |---|---|
-| **Network** | Signal, noise, link rate, channel, security and Wi-Fi standard. IP addresses, router, DNS and VPN. Hardware and private MAC addresses. A speed graph, a Wi-Fi picker that lists known networks first, and an optional roaming log. |
+| **Network** | Signal, noise, link rate, channel, security and Wi-Fi standard. IP addresses, router, DNS and VPN. Hardware and private MAC addresses. The adapter's name on a wired connection. A speed graph, a Wi-Fi picker that lists known networks first, and an optional roaming log. |
 | **Battery** | Level, charger, cycle count and maximum capacity. |
 | **Bluetooth** | Paired devices with connect and disconnect. Battery levels, including left, right and case for AirPods. |
 | **System** | A live CPU graph with performance and efficiency cores, memory breakdown and pressure, swap, top processes and details about the Mac. |
 | **Disk** | All volumes. Click one to open it in Finder, or unmount external drives from the list. |
 | **AI Usage** | 5-hour and weekly limits for Claude and Codex, with reset times and a warning from 90 %. Off by default. |
+| **Menu Bar Items** | Menu bar icons that the notch or Hidden Bar keeps out of sight. Click one to open its menu, or the app when its menu can't be read. Off by default. |
+
+Right-click a card for shortcuts:
+
+- **Network:** Flush DNS Cache, Edit Hosts File, Renew DHCP Lease, Configure IP and IP Profile. Changes ask for your administrator password.
+- **System:** Open Activity Monitor.
+
+**Configure IP** sets IPv4 to DHCP, DHCP with a manual address or manual, along with DNS servers and search domains. While your own lists are empty it shows the ones in use. Save the settings as a profile, then switch profiles from the Network card's right-click menu.
+
+## The notch
+
+On a MacBook with a camera notch, macOS hides menu bar icons that don't fit beside it. DuoBar+ offers two ways around that:
+
+- **Hidden icons:** turn on the Menu Bar Items module, and optionally the arrow to the left of the DuoBar+ icon. The arrow lists the hidden icons and opens their menus. This needs Accessibility access.
+- **Menu Bar Below Notch:** switches the built-in display to its mode of the same width and sharpness that ends under the notch, so every icon fits. You lose the top 44 points of the screen. Find it in the arrow's list, the Menu Bar Items page or by right-clicking the DuoBar+ icon. Choose it again to go back.
+
+Launchers like Raycast can use these links:
+
+| Link | What it does |
+|---|---|
+| `duobarplus://toggle-notch` | Moves the menu bar below the notch, or back |
+| `duobarplus://notch-on`, `duobarplus://notch-off` | Below the notch, or full height |
+| `duobarplus://ip-profile?name=Home` | Applies the IP profile named Home. `name=dhcp` goes back to DHCP. |
+
+A ready-made Raycast script is in [scripts/raycast](scripts/raycast). Add that folder under Raycast's Extensions → Script Commands.
 
 ## Install
 
@@ -98,6 +123,8 @@ DuoBar+ has no analytics and no account. It makes two kinds of network request:
 | Location | macOS requires it to reveal the name of the Wi-Fi network. |
 | Bluetooth | To list devices and recognize audio connections. |
 | Keychain (only with AI Usage and Claude on) | To read the sign-in Claude Code already saved. |
+| Accessibility (only with Menu Bar Items on) | To find menu bar icons hidden by the notch and open their menus. |
+| Administrator password (each time) | To flush the DNS cache, save the hosts file and change the IP configuration. DuoBar+ never stores it. |
 
 AI Usage reads the Claude Code sign-in but never renews or changes it. The request goes to `api.anthropic.com` while the popover is open, at most every two minutes unless you press Refresh. That endpoint is undocumented, so it can stop working without notice. Codex limits come from the session logs Codex saves on your Mac, and nothing about them is sent anywhere.
 
